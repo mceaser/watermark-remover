@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>手绘去水印 · 手机相册版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: #0f1a24;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+            margin: 0;
+        }
+
+        .app {
+            background: white;
+            border-radius: 28px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* 头部 */
+        .header {
+            background: #1a3344;
+            color: white;
+            padding: 22px 20px 18px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header h1 span {
+            background: #ffb347;
+            color: #1e3a4a;
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 40px;
+        }
+
+        .header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* 上传区域 - 修复手机选择问题 */
+        .upload-area {
+            background: #e9f1f8;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .file-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* 关键修复：使用 button 元素触发 file input */
+        .select-btn {
+            background: #2b5f7a;
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 60px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+            min-width: 160px;
+            box-shadow: 0 6px 12px #1a4053;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .select-btn:active {
+            background: #1e465b;
+            transform: scale(0.98);
+        }
+
+        #fileName {
+            background: white;
+            border-radius: 60px;
+            padding: 14px 18px;
+            font-size: 0.95rem;
+            color: #1b4b61;
+            flex: 2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border: 1px solid #b7cfdf;
+            box-shadow: inset 0 2px 5px #d0e0eb;
+        }
+
+        .dimension-info {
+            background: #cbe0ed;
+            border-radius: 40px;
+            padding: 8px 20px;
+            font-size: 0.95rem;
+            color: #124256;
+            display: inline-block;
+            align-self: flex-start;
+        }
+
+        /* 画布区域 */
+        .canvas-section {
+            background: #1e3d4f;
+            padding: 20px 15px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .canvas-wrap {
+            background: white;
+            border-radius: 24px;
+            padding: 12px;
+            box-shadow: inset 0 4px 12px #8fb1c5;
+            max-width: 100%;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 60vh;
+            border-radius: 16px;
+            background: #f5faff;
+            cursor: crosshair;
+            touch-action: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        /* 工具栏 */
+        .tool-section {
+            background: #e3eff8;
+            padding: 18px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .brush-show {
+            background: white;
+            border-radius: 60px;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #1a4f68;
+            box-shadow: 0 2px 8px #b4d1e2;
+        }
+
+        .brush-show .value {
+            background: #2b6f8a;
+            color: white;
+            padding: 8px 28px;
+            border-radius: 40px;
+        }
+
+        /* 模式切换 */
+        .mode-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            background: white;
+            border: 2px solid #b6d3e5;
+            border-radius: 60px;
+            padding: 16px 0;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #1b5772;
+            transition: 0.1s;
+            box-shadow: 0 4px 8px #aac6d8;
+        }
+
+        .mode-btn.active {
+            background: #226481;
+            border-color: #226481;
+            color: white;
+        }
+
+        .mode-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* 操作按钮组 */
+        .action-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 5px 0;
+        }
+
+        .action-btn {
+            flex: 1 1 40%;
+            background: white;
+            border: none;
+            border-radius: 60px;
+            padding: 18px 0;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #1a5570;
+            box-shadow: 0 6px 12px #b0cfdf;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 140px;
+        }
+
+        .action-btn.primary {
+            background: #226481;
+            color: white;
+            box-shadow: 0 8px 16px #0e4055;
+        }
+
+        .action-btn.primary:active {
+            background: #1b5270;
+        }
+
+        .action-btn:active {
+            background: #d4e5f0;
+            transform: scale(0.97);
+        }
+
+        /* 状态卡片 */
+        .status-card {
+            background: #d0e3f0;
+            border-radius: 60px;
+            padding: 18px 22px;
+            margin: 0 16px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #0b3a4c;
+            border: 1px solid #a2c5da;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .red-number {
+            background: #e63946;
+            color: white;
+            padding: 6px 24px;
+            border-radius: 40px;
+            font-size: 1.3rem;
+        }
+
+        /* 指引 */
+        .guide-box {
+            background: #cde2f0;
+            border-radius: 28px 28px 0 0;
+            padding: 22px 20px;
+            border-top: 3px solid #9bc1d8;
+        }
+
+        .guide-box h3 {
+            color: #1b4d63;
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .guide-box ol {
+            padding-left: 28px;
+            color: #103c4f;
+            font-size: 1rem;
+            line-height: 2;
+        }
+
+        .alert-box {
+            background: #fff1e0;
+            border: 2px solid #ffaa33;
+            border-radius: 30px;
+            padding: 16px;
+            margin: 16px 16px 20px;
+            color: #b35100;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 隐藏的原生file input */
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>
+                ✦ 去水印·手机版
+                <span>相册专用</span>
+            </h1>
+            <p>📱 支持从相册选图 / 保存到相册</p>
+        </div>
+
+        <!-- 上传区域 - 修复手机选择问题 -->
+        <div class="upload-area">
+            <div class="file-row">
+                <!-- 使用按钮来触发隐藏的file input -->
+                <button class="select-btn" id="selectBtn">📁 从相册选择</button>
+                <span id="fileName">未选择图片</span>
+            </div>
+            <div>
+                <span class="dimension-info" id="dimension">0 x 0</span>
+            </div>
+        </div>
+
+        <!-- 隐藏的file input -->
+        <input type="file" id="fileInput" accept="image/*" capture="photos">
+
+        <!-- 画布区 -->
+        <div class="canvas-section">
+            <div class="canvas-wrap">
+                <canvas id="canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="tool-section">
+            <div class="brush-show">
+                <span>🖌️ 画笔粗细</span>
+                <span class="value">30 px</span>
+            </div>
+
+            <div class="mode-group">
+                <div id="modeMark" class="mode-btn active">🔴 标记水印</div>
+                <div id="modeUnmark" class="mode-btn">⬜ 取消标记</div>
+            </div>
+
+            <div class="action-group">
+                <button class="action-btn" id="clearBtn">🔄 清除红色</button>
+                <button class="action-btn primary" id="repairBtn">✨ 一键去水印</button>
+                <button class="action-btn" id="saveBtn">💾 保存到相册</button>
+            </div>
+        </div>
+
+        <!-- 状态显示 -->
+        <div class="status-card">
+            <span>🔴 红色区域</span>
+            <span class="red-number" id="redCount">0</span>
+            <span>像素</span>
+        </div>
+
+        <!-- 操作说明 -->
+        <div class="guide-box">
+            <h3>📋 手机操作步骤</h3>
+            <ol>
+                <li><strong>点击「从相册选择」</strong>上传图片</li>
+                <li>用手指在<strong>水印上涂抹</strong>（出现红色）</li>
+                <li>点<strong>「一键去水印」</strong>，红色数字归零</li>
+                <li>点<strong>「保存到相册」</strong>，图片存入手机</li>
+            </ol>
+        </div>
+
+        <!-- 重要提醒 -->
+        <div class="alert-box">
+            <span>⚠️</span> 去水印后红色数字必须变为 <strong>0</strong>，否则保存的图片还有红色标记
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // 获取元素
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const fileInput = document.getElementById('fileInput');
+            const selectBtn = document.getElementById('selectBtn');
+            const fileName = document.getElementById('fileName');
+            const dimension = document.getElementById('dimension');
+            const redCountSpan = document.getElementById('redCount');
+            const repairBtn = document.getElementById('repairBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const modeMark = document.getElementById('modeMark');
+            const modeUnmark = document.getElementById('modeUnmark');
+
+            // 核心数据
+            let originalImageData = null;
+            let workingImageData = null;
+            let maskData = null;
+            let imageLoaded = false;
+            let isDrawing = false;
+            
+            const BRUSH_SIZE = 30;
+            let currentMode = 'mark'; // 'mark' 或 'unmark'
+
+            // 模式切换
+            modeMark.addEventListener('click', () => {
+                currentMode = 'mark';
+                modeMark.classList.add('active');
+                modeUnmark.classList.remove('active');
+            });
+
+            modeUnmark.addEventListener('click', () => {
+                currentMode = 'unmark';
+                modeUnmark.classList.add('active');
+                modeMark.classList.remove('active');
+            });
+
+            // 修复：使用按钮触发文件选择 (手机专用)
+            selectBtn.addEventListener('click', function() {
+                fileInput.click(); // 直接触发隐藏的file input
+            });
+
+            // 文件选择处理
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // 显示文件名（截断太长）
+                fileName.textContent = file.name.length > 25 ? file.name.slice(0, 22) + '…' : file.name;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // 计算适合手机的画布大小
+                        const maxWidth = window.innerWidth - 70;
+                        const maxHeight = window.innerHeight * 0.55;
+                        
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // 等比例缩放
+                        if (width > maxWidth || height > maxHeight) {
+                            const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+                            canvas.width = Math.floor(width * ratio);
+                            canvas.height = Math.floor(height * ratio);
+                        } else {
+                            canvas.width = width;
+                            canvas.height = height;
+                        }
+                        
+                        // 绘制图片
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // 保存原始数据
+                        originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        workingImageData = new ImageData(
+                            new Uint8ClampedArray(originalImageData.data),
+                            canvas.width,
+                            canvas.height
+                        );
+                        
+                        // 初始化mask
+                        maskData = new Uint8Array(canvas.width * canvas.height).fill(0);
+                        
+                        imageLoaded = true;
+                        dimension.textContent = `${canvas.width} x ${canvas.height}`;
+                        updateRedCount();
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // 获取坐标（兼容触摸）
+            function getCoords(e) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                let clientX, clientY;
+                
+                if (e.touches) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                    e.preventDefault();
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                
+                const x = Math.floor((clientX - rect.left) * scaleX);
+                const y = Math.floor((clientY - rect.top) * scaleY);
+                
+                return {
+                    x: Math.max(0, Math.min(x, canvas.width - 1)),
+                    y: Math.max(0, Math.min(y, canvas.height - 1))
+                };
+            }
+
+            // 涂抹
+            function paint(x, y) {
+                if (!imageLoaded) return;
+                
+                const radius = BRUSH_SIZE / 2;
+                const w = canvas.width;
+                const h = canvas.height;
+                
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > radius) continue;
+                        
+                        const px = Math.floor(x + dx);
+                        const py = Math.floor(y + dy);
+                        
+                        if (px >= 0 && px < w && py >= 0 && py < h) {
+                            const idx = py * w + px;
+                            if (currentMode === 'mark') {
+                                maskData[idx] = 1;
+                            } else {
+                                maskData[idx] = 0;
+                            }
+                        }
+                    }
+                }
+                
+                redrawCanvas();
+            }
+
+            // 重绘
+            function redrawCanvas() {
+                if (!imageLoaded) return;
+                
+                ctx.putImageData(workingImageData, 0, 0);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                const w = canvas.width;
+                
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const idx = y * w + x;
+                        if (maskData[idx] === 1) {
+                            const pIdx = (y * w + x) * 4;
+                            data[pIdx] = 255;
+                            data[pIdx + 1] = data[pIdx + 1] * 0.3;
+                            data[pIdx + 2] = data[pIdx + 2] * 0.3;
+                        }
+                    }
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+                updateRedCount();
+            }
+
+            // 更新红色计数
+            function updateRedCount() {
+                if (!maskData) return;
+                let count = 0;
+                for (let i = 0; i < maskData.length; i++) {
+                    if (maskData[i] === 1) count++;
+                }
+                redCountSpan.textContent = count;
+            }
+
+            // 事件处理
+            function handleStart(e) {
+                e.preventDefault();
+                if (!imageLoaded) {
+                    alert('请先选择图片');
+                    return;
+                }
+                isDrawing = true;
+                const coord = getCoords(e);
+                paint(coord.x, coord.y);
+            }
+
+            function handleMove(e) {
+                e.preventDefault();
+                if (!isDrawing || !imageLoaded) return;
+                const coord = getCoords(e);
+                paint(coord.x, coord.y);
+            }
+
+            function handleEnd(e) {
+                e.preventDefault();
+                isDrawing = false;
+            }
+
+            // 鼠标/触摸事件
+            canvas.addEventListener('mousedown', handleStart);
+            canvas.addEventListener('mousemove', handleMove);
+            canvas.addEventListener('mouseup', handleEnd);
+            canvas.addEventListener('mouseleave', handleEnd);
+            
+            canvas.addEventListener('touchstart', handleStart, { passive: false });
+            canvas.addEventListener('touchmove', handleMove, { passive: false });
+            canvas.addEventListener('touchend', handleEnd);
+            canvas.addEventListener('touchcancel', handleEnd);
+            
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            // 清除红色
+            clearBtn.addEventListener('click', () => {
+                if (!imageLoaded) return;
+                maskData = new Uint8Array(canvas.width * canvas.height).fill(0);
+                workingImageData = new ImageData(
+                    new Uint8ClampedArray(originalImageData.data),
+                    canvas.width,
+                    canvas.height
+                );
+                ctx.putImageData(workingImageData, 0, 0);
+                redrawCanvas();
+            });
+
+            // 去水印
+            repairBtn.addEventListener('click', () => {
+                if (!imageLoaded) {
+                    alert('请先选择图片');
+                    return;
+                }
+                
+                let hasRed = false;
+                for (let i = 0; i < maskData.length; i++) {
+                    if (maskData[i] === 1) { hasRed = true; break; }
+                }
+                
+                if (!hasRed) {
+                    alert('请先涂抹水印区域');
+                    return;
+                }
+                
+                const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = currentData.data;
+                const w = canvas.width;
+                const h = canvas.height;
+                
+                const resultData = new Uint8ClampedArray(data.length);
+                for (let i = 0; i < data.length; i++) resultData[i] = data[i];
+                
+                // 多次迭代修复
+                for (let iter = 0; iter < 4; iter++) {
+                    const sourceData = new Uint8ClampedArray(resultData);
+                    
+                    for (let y = 0; y < h; y++) {
+                        for (let x = 0; x < w; x++) {
+                            const idx = y * w + x;
+                            if (maskData[idx] === 1) {
+                                let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                                
+                                for (let dy = -15; dy <= 15; dy++) {
+                                    for (let dx = -15; dx <= 15; dx++) {
+                                        const nx = x + dx;
+                                        const ny = y + dy;
+                                        if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                                        
+                                        const nIdx = ny * w + nx;
+                                        if (maskData[nIdx] === 0) {
+                                            const pIdx = nIdx * 4;
+                                            sumR += sourceData[pIdx];
+                                            sumG += sourceData[pIdx + 1];
+                                            sumB += sourceData[pIdx + 2];
+                                            count++;
+                                        }
+                                    }
+                                }
+                                
+                                if (count > 0) {
+                                    const pIdx = idx * 4;
+                                    resultData[pIdx] = sumR / count;
+                                    resultData[pIdx + 1] = sumG / count;
+                                    resultData[pIdx + 2] = sumB / count;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                workingImageData = new ImageData(resultData, w, h);
+                maskData = new Uint8Array(w * h).fill(0); // 清除红色标记
+                
+                ctx.putImageData(workingImageData, 0, 0);
+                updateRedCount(); // 应该为0
+                redrawCanvas();
+            });
+
+            // 保存图片到相册/下载 (兼容手机和PC)
+            saveBtn.addEventListener('click', async () => {
+                if (!imageLoaded) {
+                    alert('没有图片可以保存');
+                    return;
+                }
+                
+                // 检查红色
+                let redLeft = 0;
+                for (let i = 0; i < maskData.length; i++) {
+                    if (maskData[i] === 1) redLeft++;
+                }
+                
+                if (redLeft > 0) {
+                    if (!confirm(`还有 ${redLeft} 个红色像素未去除，确定保存吗？`)) {
+                        return;
+                    }
+                }
+                
+                try {
+                    // 将canvas转换为blob
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    
+                    // 检测是否在手机浏览器
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                    
+                    if (isMobile && navigator.share) {
+                        // 手机分享/保存到相册 (支持share)
+                        const file = new File([blob], '去水印完成.png', { type: 'image/png' });
+                        await navigator.share({
+                            files: [file],
+                            title: '去水印图片',
+                            text: '已处理完成的图片'
+                        }).catch(() => {
+                            // 如果share失败，回退到下载
+                            fallbackDownload(blob);
+                        });
+                    } else if (isMobile) {
+                        // 手机但不支持share，使用下载
+                        fallbackDownload(blob);
+                    } else {
+                        // PC浏览器，直接下载
+                        fallbackDownload(blob);
+                    }
+                } catch (err) {
+                    console.error('保存失败:', err);
+                    alert('保存失败，请重试');
+                }
+            });
+
+            // 备用的下载方法
+            function fallbackDownload(blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = '去水印完成.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+
+            // 初始化
+            dimension.textContent = '0 x 0';
+        })();
+    </script>
+</body>
+</html>
